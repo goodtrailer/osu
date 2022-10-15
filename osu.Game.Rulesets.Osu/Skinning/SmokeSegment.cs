@@ -187,7 +187,6 @@ namespace osu.Game.Rulesets.Osu.Skinning
             private Vector2 drawSize;
             private Texture? texture;
             private int rotationSeed;
-            private int rotationIndex;
 
             // anim calculation vars (color, scale, direction)
             private double initialFadeOutDurationTrunc;
@@ -234,8 +233,6 @@ namespace osu.Game.Rulesets.Osu.Skinning
                 if (points.Count == 0)
                     return;
 
-                rotationIndex = 0;
-
                 quadBatch ??= renderer.CreateQuadBatch<TexturedVertex2D>(max_point_count / 10, 10);
                 texture ??= renderer.WhitePixel;
                 RectangleF textureRect = texture.GetTextureRect();
@@ -248,8 +245,8 @@ namespace osu.Game.Rulesets.Osu.Skinning
                 shader.Bind();
                 texture.Bind();
 
-                foreach (var point in points)
-                    drawPointQuad(point, textureRect);
+                for (int i = 0; i < points.Count; i++)
+                    drawPointQuad(points[i], textureRect, i);
 
                 shader.Unbind();
                 renderer.PopLocalMatrix();
@@ -301,10 +298,10 @@ namespace osu.Game.Rulesets.Osu.Skinning
                 return fraction * (final_scale - initial_scale) + initial_scale;
             }
 
-            protected virtual Vector2 PointDirection(SmokePoint point)
+            protected virtual Vector2 PointDirection(SmokePoint point, int index)
             {
                 float initialAngle = MathF.Atan2(point.Direction.Y, point.Direction.X);
-                float finalAngle = initialAngle + nextRotation();
+                float finalAngle = initialAngle + getRotation(index);
 
                 double timeDoingRotation = CurrentTime - point.Time;
                 float fraction = Math.Clamp((float)(timeDoingRotation / rotation_duration), 0, 1);
@@ -314,15 +311,21 @@ namespace osu.Game.Rulesets.Osu.Skinning
                 return new Vector2(MathF.Sin(angle), -MathF.Cos(angle));
             }
 
-            private float nextRotation() => max_rotation * (StatelessRNG.NextSingle(rotationSeed, rotationIndex++) * 2 - 1);
+            private float getRotation(int index) => max_rotation * (StatelessRNG.NextSingle(rotationSeed, index) * 2 - 1);
 
-            private void drawPointQuad(SmokePoint point, RectangleF textureRect)
+            private void drawPointQuad(SmokePoint point, RectangleF textureRect, int index)
             {
                 Debug.Assert(quadBatch != null);
 
                 var colour = PointColour(point);
+                if (colour.A == 0)
+                    return;
+
                 float scale = PointScale(point);
-                var dir = PointDirection(point);
+                if (scale == 0)
+                    return;
+
+                var dir = PointDirection(point, index);
                 var ortho = dir.PerpendicularLeft;
 
                 if (colour.A == 0 || scale == 0)
