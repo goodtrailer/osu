@@ -19,47 +19,50 @@ namespace osu.Game.Rulesets.Osu.UI
     /// </summary>
     public class SmokeContainer : Container, IRequireHighFrequencyMousePosition, IKeyBindingHandler<OsuAction>
     {
+        private const double min_smoke_rate = 1000 / 60.0;
+
         private SmokeSkinnableDrawable? currentSegmentSkinnable;
+        private SmokeSegment? currentSegment => currentSegmentSkinnable?.Drawable as SmokeSegment;
 
         private Vector2 lastMousePosition;
+        private double lastTimeAdded;
 
         public override bool ReceivePositionalInputAt(Vector2 _) => true;
 
         public bool OnPressed(KeyBindingPressEvent<OsuAction> e)
         {
-            if (e.Action == OsuAction.Smoke)
-            {
-                AddInternal(currentSegmentSkinnable = new SmokeSkinnableDrawable(new OsuSkinComponentLookup(OsuSkinComponents.CursorSmoke), _ => new DefaultSmokeSegment()));
+            if (e.Action != OsuAction.Smoke)
+                return false;
 
-                // Add initial position immediately.
-                addPosition();
-                return true;
-            }
+            AddInternal(currentSegmentSkinnable = new SmokeSkinnableDrawable(new OsuSkinComponentLookup(OsuSkinComponents.CursorSmoke), _ => new DefaultSmokeSegment()));
+            lastTimeAdded = double.MinValue;
 
-            return false;
+            return true;
         }
 
         public void OnReleased(KeyBindingReleaseEvent<OsuAction> e)
         {
-            if (e.Action == OsuAction.Smoke)
-            {
-                if (currentSegmentSkinnable?.Drawable is SmokeSegment segment)
-                {
-                    segment.FinishDrawing(Time.Current);
-                    currentSegmentSkinnable = null;
-                }
-            }
+            if (e.Action != OsuAction.Smoke)
+                return;
+
+            currentSegment?.FinishDrawing(Time.Current);
+            currentSegmentSkinnable = null;
         }
 
         protected override bool OnMouseMove(MouseMoveEvent e)
         {
             lastMousePosition = e.MousePosition;
-            addPosition();
+
+            if (currentSegment == null)
+                return base.OnMouseMove(e);
+
+            bool shouldForcePoint = Time.Current - lastTimeAdded >= min_smoke_rate;
+
+            if (currentSegment.AddPosition(lastMousePosition, Time.Current, shouldForcePoint))
+                lastTimeAdded = Time.Current;
 
             return base.OnMouseMove(e);
         }
-
-        private void addPosition() => (currentSegmentSkinnable?.Drawable as SmokeSegment)?.AddPosition(lastMousePosition, Time.Current);
 
         private class SmokeSkinnableDrawable : SkinnableDrawable
         {

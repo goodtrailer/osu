@@ -14,6 +14,7 @@ using osu.Framework.Graphics.Rendering;
 using osu.Framework.Graphics.Rendering.Vertices;
 using osu.Framework.Graphics.Shaders;
 using osu.Framework.Graphics.Textures;
+using osu.Framework.Logging;
 using osu.Framework.Utils;
 using osu.Game.Utils;
 using osuTK;
@@ -82,7 +83,7 @@ namespace osu.Game.Rulesets.Osu.Skinning
             totalDistance = pointInterval;
         }
 
-        public void AddPosition(Vector2 position, double time)
+        public bool AddPosition(Vector2 position, double time, bool forcePoint = false)
         {
             lastPosition ??= position;
 
@@ -90,35 +91,49 @@ namespace osu.Game.Rulesets.Osu.Skinning
             totalDistance += delta;
             int count = (int)(totalDistance / pointInterval);
 
+            Vector2 pointPos = Vector2.Zero;
+            Vector2 increment = Vector2.Zero;
+
             if (count > 0)
             {
-                Vector2 increment = position - (Vector2)lastPosition;
+                increment = position - (Vector2)lastPosition;
                 increment.NormalizeFast();
 
-                Vector2 pointPos = (pointInterval - (totalDistance - delta)) * increment + (Vector2)lastPosition;
+                pointPos = (pointInterval - (totalDistance - delta)) * increment + (Vector2)lastPosition;
                 increment *= pointInterval;
 
                 totalDistance %= pointInterval;
 
-                if (SmokePoints.Count == 0 || SmokePoints[^1].Time <= time)
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        SmokePoints.Add(new SmokePoint
-                        {
-                            Position = pointPos,
-                            Time = time,
-                            Angle = RNG.NextSingle(0, 2 * MathF.PI),
-                        });
+                Invalidate(Invalidation.DrawNode);
+            }
+            else if (forcePoint)
+            {
+                count = 1;
+                pointPos = position;
 
-                        pointPos += increment;
-                    }
-                }
+                totalDistance = 0;
 
                 Invalidate(Invalidation.DrawNode);
             }
 
+            if (SmokePoints.Count == 0 || SmokePoints[^1].Time <= time)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    SmokePoints.Add(new SmokePoint
+                    {
+                        Position = pointPos,
+                        Time = time,
+                        Angle = RNG.NextSingle(0, 2 * MathF.PI),
+                    });
+
+                    pointPos += increment;
+                }
+            }
+
             lastPosition = position;
+
+            return count > 0;
         }
 
         public void FinishDrawing(double time)
