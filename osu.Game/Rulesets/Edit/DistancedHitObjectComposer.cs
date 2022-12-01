@@ -281,7 +281,7 @@ namespace osu.Game.Rulesets.Edit
 
         public virtual float FindSnappedDistance(HitObject referenceObject, float distance)
         {
-            double startTime = referenceObject.StartTime;
+            double startTime = referenceObject.GetEndTime();
 
             double actualDuration = startTime + DistanceToDuration(referenceObject, distance);
 

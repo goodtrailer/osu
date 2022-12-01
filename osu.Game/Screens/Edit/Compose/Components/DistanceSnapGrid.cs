@@ -142,7 +142,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
         {
             var timingPoint = Beatmap.ControlPointInfo.TimingPointAt(StartTime);
             double beatLength = timingPoint.BeatLength / beatDivisor.Value;
-            int beatIndex = (int)Math.Round((StartTime - timingPoint.Time) / beatLength);
+            int beatIndex = (int)((StartTime - timingPoint.Time) / beatLength);
 
             var colour = BindableBeatDivisor.GetColourFor(BindableBeatDivisor.GetDivisorForBeatIndex(beatIndex + placementIndex + 1, beatDivisor.Value), Colours);
 
